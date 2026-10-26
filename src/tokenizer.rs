@@ -76,7 +76,7 @@ pub fn tokenize(contents: String) -> Result<Vec<Token>, String> {
     for line in contents.lines() {
         let mut string = String::new();
 
-        for c in line.chars() {
+        for (i, c) in line.chars().enumerate() {
             match state {
                 TokenizerState::LabelOrMnemonic => {
                     if c == ':' {
@@ -129,6 +129,10 @@ pub fn tokenize(contents: String) -> Result<Vec<Token>, String> {
                     if c >= '0' && c <= '9' || c == '-' {
                         state = TokenizerState::Data;
                         string.push(c);
+
+                        if i == line.chars().count() - 1 {
+                            tokens.push(Token::Data(Box::from(string.as_str())));
+                        }
                     } else {
                         state = TokenizerState::Mnemonic;
                         string.push(c);
@@ -137,7 +141,7 @@ pub fn tokenize(contents: String) -> Result<Vec<Token>, String> {
                 TokenizerState::Data => {
                     if c >= '0' && c <= '9' || c == '-' {
                         string.push(c);
-                        if c == line.chars().last().expect("Empty line in iteration") {
+                        if i == line.chars().count() - 1 {
                             tokens.push(Token::Data(Box::from(string.as_str())));
                         }
                     } else {
@@ -181,7 +185,7 @@ pub fn tokenize(contents: String) -> Result<Vec<Token>, String> {
                     if c == ' ' && string.len() == 0 {
                         continue;
                     }
-                    if c == line.chars().last().expect("Empty line in iteration") {
+                    if i == line.chars().count() - 1 {
                         string.push(c);
 
                         tokens.push(Token::Label(Box::from(string.as_str())));
@@ -207,7 +211,7 @@ pub fn tokenize(contents: String) -> Result<Vec<Token>, String> {
                 }
                 TokenizerState::EOL => {
                     if c != ' ' && c != ',' {
-                        return Err(format!("Expected EOL but got {c}"));
+                        return Err(format!("Expected EOL but got '{c}'"));
                     }
                 }
             };
