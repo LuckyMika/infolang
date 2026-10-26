@@ -1,9 +1,11 @@
+use std::fmt::format;
+
 use crate::tokenizer::{Mnemonic, Operand, Token};
 
 #[derive(Debug)]
 pub struct Program {
-    instructions: Vec<Instruction>,
-    data: Vec<LabeledData>,
+    pub instructions: Vec<Instruction>,
+    pub data: Vec<LabeledData>,
 }
 
 #[derive(Debug)]
@@ -15,12 +17,8 @@ pub struct Instruction {
 
 #[derive(Debug)]
 pub struct LabeledData {
-    label: Box<str>,
-    data: i64,
-}
-
-pub enum ParserState {
-    Beginning,
+    pub label: Box<str>,
+    pub data: i64,
 }
 
 pub fn parse(tokens: Vec<Token>) -> Result<Program, String> {
@@ -41,10 +39,19 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, String> {
                     ));
                 }
                 Some(Token::Data(data)) => {
-                    println!("Parsing data {data}");
+                    let parsed_data = match data.parse() {
+                        Ok(parsed) => parsed,
+                        Err(e) => {
+                            return Err(format!(
+                                "Error parsing data: {} is not valid data! {e}",
+                                data
+                            ));
+                        }
+                    };
+
                     program.data.push(LabeledData {
                         label: label.clone(),
-                        data: data.parse().expect("invalid data"),
+                        data: parsed_data,
                     });
 
                     iter.next();
