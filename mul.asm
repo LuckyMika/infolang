@@ -1,0 +1,8 @@
+INIT S3
+start: SPRUNG0 end, S2
+ADD S3, S1
+DEKREMENT S2
+SPRUNG start
+end: RUECKGABE S3
+S1: 69
+S2: 67
