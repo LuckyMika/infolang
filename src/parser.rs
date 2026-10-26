@@ -1,6 +1,4 @@
-use std::fmt::format;
-
-use crate::tokenizer::{Mnemonic, Operand, Token};
+use crate::tokenizer::{Mnemonic, Token};
 
 #[derive(Debug)]
 pub struct Program {
@@ -10,9 +8,9 @@ pub struct Program {
 
 #[derive(Debug)]
 pub struct Instruction {
-    label: Option<Box<str>>,
-    mnemonic: Mnemonic,
-    operands: [Option<Box<str>>; 2],
+    pub label: Option<Box<str>>,
+    pub mnemonic: Mnemonic,
+    pub operands: [Option<Box<str>>; 2],
 }
 
 #[derive(Debug)]
