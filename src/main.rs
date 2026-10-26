@@ -1,4 +1,5 @@
 use clap::Parser;
+mod executor;
 mod parser;
 mod tokenizer;
 
@@ -6,6 +7,10 @@ mod tokenizer;
 #[command(version, about, long_about = None)]
 struct Args {
     file: String,
+    #[arg(short, long)]
+    tokenize: bool,
+    #[arg(short, long)]
+    parse: bool,
 }
 
 fn main() {
@@ -22,16 +27,18 @@ fn main() {
     let tokens = match tokenizer::tokenize(contents) {
         Ok(tokens) => tokens,
         Err(e) => {
-            eprintln!("Error during tokanization:");
+            eprintln!("Error during tokenization:");
             eprintln!("{e}");
             return;
         }
     };
 
-    println!("Tokens:");
+    if args.tokenize {
+        println!("Tokens:");
 
-    for token in &tokens {
-        println!("{:?}", token);
+        for token in &tokens {
+            println!("{:?}", token);
+        }
     }
 
     let program = match parser::parse(tokens) {
@@ -43,6 +50,8 @@ fn main() {
         }
     };
 
-    println!("Program:");
-    println!("{:?}", program);
+    if args.parse {
+        println!("Program:");
+        println!("{:?}", program);
+    }
 }
