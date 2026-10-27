@@ -47,6 +47,10 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, String> {
                         }
                     };
 
+                    if let Some(_data) = program.data.iter().find(|data| data.label == *label) {
+                        return Err(format!("Redefinition of data '{label}'"));
+                    }
+
                     program.data.push(LabeledData {
                         label: label.clone(),
                         data: parsed_data,
