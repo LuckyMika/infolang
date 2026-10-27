@@ -59,6 +59,15 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, String> {
                     iter.next();
                 }
                 Some(Token::Mnemonic(mnemonic)) => {
+                    if let Some(_instruction) = program.instructions.iter().find(|instruction| {
+                        instruction
+                            .label
+                            .as_ref()
+                            .is_some_and(|instruction_label| *instruction_label == *label)
+                    }) {
+                        return Err(format!("Redefinition of code label '{label}'"));
+                    }
+
                     iter.next();
                     if let Some(_) = mnemonic.operands[0] {
                         let operand1 = match iter.peek() {
