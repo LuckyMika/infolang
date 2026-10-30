@@ -1,19 +1,23 @@
 use crate::tokenizer::{Mnemonic, Token};
 
-#[derive(Debug)]
+// TODO: Rewrite labels to use indexes inside the programs arrays instead of string names
+// change `Program` to use fixed-size arrays instead of vecs since all operands that will be used
+// are known ahead of time; This should reduce the time complexity of label lookups from O(n) to O(1)
+// and reduce the constant coefficient due to dropping the comparison
+#[derive(Debug, PartialEq)]
 pub struct Program {
     pub instructions: Vec<Instruction>,
     pub data: Vec<LabeledData>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Instruction {
     pub label: Option<Box<str>>,
     pub mnemonic: Mnemonic,
     pub operands: [Option<Box<str>>; 2],
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct LabeledData {
     pub label: Box<str>,
     pub data: i64,
@@ -195,4 +199,41 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, String> {
     }
 
     return Ok(program);
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        parser::{self, Instruction, LabeledData, Program},
+        tokenizer::{MNEMONICS, Token},
+    };
+
+    #[test]
+    fn simple() {
+        let tokens = vec![
+            Token::Mnemonic(MNEMONICS[0]),
+            Token::Label(Box::from("S1")),
+            Token::Label(Box::from("S1")),
+            Token::Label(Box::from("S1")),
+            Token::Data(Box::from("1")),
+        ];
+
+        let result = parser::parse(tokens);
+        assert!(result.is_ok());
+        let result = result.unwrap();
+
+        let program = Program {
+            instructions: vec![Instruction {
+                mnemonic: MNEMONICS[0],
+                label: None,
+                operands: [Some(Box::from("S1")), Some(Box::from("S1"))],
+            }],
+            data: vec![LabeledData {
+                label: Box::from("S1"),
+                data: 1,
+            }],
+        };
+
+        assert_eq!(result, program);
+    }
 }
