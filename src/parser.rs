@@ -1,5 +1,36 @@
 use crate::tokenizer::{Mnemonic, Token};
 
+#[derive(PartialEq, Debug, Clone, Copy)]
+pub struct Mnemonic2 {
+    pub name: &'static str,
+    pub operands: Option<(Operand2, Option<Operand2>)>,
+}
+
+#[derive(PartialEq, Debug, Clone, Copy)]
+pub enum Operand2 {
+    CodeLabel,
+    DataLabel,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Program2 {
+    pub instructions: Vec<Instruction2>,
+    pub data: Vec<i64>,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Instruction2 {
+    ADD(usize, usize),
+    SUB(usize, usize),
+    INKREMENT(usize),
+    DEKREMENT(usize),
+    INIT(usize),
+    RUECKGABE(usize),
+    SPRUNG(usize),
+    SPRUNG0(usize, usize),
+    SPRUNGNEG(usize, usize),
+}
+
 // TODO: Rewrite labels to use indexes inside the programs arrays instead of string names
 // change `Program` to use fixed-size arrays instead of vecs since all operands that will be used
 // are known ahead of time; This should reduce the time complexity of label lookups from O(n) to O(1)
