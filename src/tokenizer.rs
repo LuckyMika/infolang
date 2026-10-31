@@ -5,6 +5,14 @@ pub enum Token {
     Data(Box<str>),
 }
 
+#[derive(Debug, PartialEq)]
+pub enum Token2 {
+    OperatorLabel(Box<str>),
+    LocationLabel(Box<str>),
+    Mnemonic(Box<str>),
+    Data(Box<str>),
+}
+
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub struct Mnemonic {
     pub name: &'static str,
@@ -68,8 +76,95 @@ enum TokenizerState {
     EOL,
 }
 
-// [Label:] Instruction [Operand][,Operand]
-// TODO: Implement tokenizer using peekable iterator
+pub fn tokenize_v2<'a>(contents: &'a str) -> Result<Vec<Token2>, String> {
+    let mut tokens = Vec::with_capacity(20);
+
+    for (line_num, line) in contents.lines().enumerate() {
+        let mut split = line.split(":").peekable();
+        let first = split.next();
+        let second = split.next();
+
+        if split.next().is_some() {
+            return Err(format!(
+                "Error in line {line_num}: line can at most have 1 label definition"
+            ));
+        }
+
+        let Some(first) = first else {
+            return Err(format!("Error in line {line_num}: Empty line in iteration"));
+        };
+
+        let (label, instruction) = if let Some(instruction) = second {
+            (Some(first), instruction)
+        } else {
+            (None, first)
+        };
+
+        dbg!(instruction.trim_ascii());
+
+        if instruction
+            .trim_ascii()
+            .chars()
+            .next()
+            .is_some_and(|c| c >= '0' && c <= '9' || c == '-')
+        {
+            let Some(label) = label else {
+                return Err(format!(
+                    "Error in line {line_num}: Lone data without a label"
+                ));
+            };
+
+            tokens.push(Token2::LocationLabel(Box::from(label)));
+            tokens.push(Token2::Data(Box::from(instruction.trim_ascii())));
+            continue;
+        }
+
+        if let Some(label) = label {
+            tokens.push(Token2::LocationLabel(Box::from(label)));
+        }
+
+        let mut buffer = String::new();
+        let mut mnemonic_pushed = false;
+
+        for character in instruction.chars() {
+            if character == ' ' || character == ',' {
+                if buffer.len() == 0 {
+                    continue;
+                }
+
+                if !mnemonic_pushed {
+                    tokens.push(Token2::Mnemonic(
+                        std::mem::take(&mut buffer).into_boxed_str(),
+                    ));
+
+                    mnemonic_pushed = true;
+                    continue;
+                } else {
+                    tokens.push(Token2::OperatorLabel(
+                        std::mem::take(&mut buffer).into_boxed_str(),
+                    ));
+                    continue;
+                }
+            }
+
+            buffer.push(character);
+        }
+
+        if buffer.len() != 0 {
+            if !mnemonic_pushed {
+                tokens.push(Token2::Mnemonic(
+                    std::mem::take(&mut buffer).into_boxed_str(),
+                ));
+            } else {
+                tokens.push(Token2::OperatorLabel(
+                    std::mem::take(&mut buffer).into_boxed_str(),
+                ));
+            }
+        }
+    }
+
+    Ok(tokens)
+}
 
 pub fn tokenize(contents: String) -> Result<Vec<Token>, String> {
     let mut tokens = Vec::with_capacity(20);
@@ -379,6 +474,163 @@ mod test {
                 Token::Mnemonic(MNEMONICS[0]),
                 Token::Label(Box::from("S1")),
                 Token::Label(Box::from("S1")),
+            ];
+
+            assert_eq!(result, expected);
+        }
+    }
+}
+
+#[cfg(test)]
+mod test_v2 {
+
+    mod simple {
+        use crate::tokenizer::{self, Token2};
+
+        #[test]
+        fn add() {
+            let input = "ADD S1, S1";
+
+            let result = tokenizer::tokenize_v2(input);
+
+            assert!(result.is_ok());
+
+            let result = result.unwrap();
+            let expected = vec![
+                Token2::Mnemonic(Box::from("ADD")),
+                Token2::OperatorLabel(Box::from("S1")),
+                Token2::OperatorLabel(Box::from("S1")),
+            ];
+
+            assert_eq!(result, expected);
+        }
+
+        #[test]
+        fn mnemonic_extra_spacing() {
+            let input = "ADD        S1, S1";
+
+            let result = tokenizer::tokenize_v2(input);
+
+            assert!(result.is_ok());
+
+            let result = result.unwrap();
+            let expected = vec![
+                Token2::Mnemonic(Box::from("ADD")),
+                Token2::OperatorLabel(Box::from("S1")),
+                Token2::OperatorLabel(Box::from("S1")),
+            ];
+
+            assert_eq!(result, expected);
+        }
+
+        #[test]
+        fn operands_extra_spacing() {
+            let input = "ADD S1     , S1";
+
+            let result = tokenizer::tokenize_v2(input);
+
+            assert!(result.is_ok());
+
+            let result = result.unwrap();
+            let expected = vec![
+                Token2::Mnemonic(Box::from("ADD")),
+                Token2::OperatorLabel(Box::from("S1")),
+                Token2::OperatorLabel(Box::from("S1")),
+            ];
+
+            assert_eq!(result, expected);
+        }
+
+        #[test]
+        fn operand_extra_spacing() {
+            let input = "ADD S1,          S1";
+
+            let result = tokenizer::tokenize_v2(input);
+
+            assert!(result.is_ok());
+
+            let result = result.unwrap();
+            let expected = vec![
+                Token2::Mnemonic(Box::from("ADD")),
+                Token2::OperatorLabel(Box::from("S1")),
+                Token2::OperatorLabel(Box::from("S1")),
+            ];
+
+            assert_eq!(result, expected);
+        }
+
+        #[test]
+        fn trailing_spaces() {
+            let input = "ADD S1, S1              ";
+
+            let result = tokenizer::tokenize_v2(input);
+
+            assert!(result.is_ok());
+
+            let result = result.unwrap();
+            let expected = vec![
+                Token2::Mnemonic(Box::from("ADD")),
+                Token2::OperatorLabel(Box::from("S1")),
+                Token2::OperatorLabel(Box::from("S1")),
+            ];
+
+            assert_eq!(result, expected);
+        }
+
+        #[test]
+        fn operand_trailing_commas() {
+            let input = "ADD S1, S1,";
+
+            let result = tokenizer::tokenize_v2(input);
+
+            assert!(result.is_ok());
+
+            let result = result.unwrap();
+            let expected = vec![
+                Token2::Mnemonic(Box::from("ADD")),
+                Token2::OperatorLabel(Box::from("S1")),
+                Token2::OperatorLabel(Box::from("S1")),
+            ];
+
+            assert_eq!(result, expected);
+        }
+
+        #[test]
+        fn operands_trailing_commas() {
+            let input = "ADD S1,, S1";
+
+            let result = tokenizer::tokenize_v2(input);
+
+            assert!(result.is_ok());
+
+            let result = result.unwrap();
+            let expected = vec![
+                Token2::Mnemonic(Box::from("ADD")),
+                Token2::OperatorLabel(Box::from("S1")),
+                Token2::OperatorLabel(Box::from("S1")),
+            ];
+
+            assert_eq!(result, expected);
+        }
+    }
+
+    mod label {
+        use crate::tokenizer::{self, Token2};
+
+        #[test]
+        fn add() {
+            let input = "P1: ADD S1, S1";
+
+            let result = tokenizer::tokenize_v2(input);
+
+            assert!(result.is_ok());
+
+            let result = result.unwrap();
+            let expected = vec![
+                Token2::LocationLabel(Box::from("P1")),
+                Token2::Mnemonic(Box::from("ADD")),
+                Token2::OperatorLabel(Box::from("S1")),
+                Token2::OperatorLabel(Box::from("S1")),
             ];
 
             assert_eq!(result, expected);

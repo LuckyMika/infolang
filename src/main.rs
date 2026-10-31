@@ -37,6 +37,23 @@ fn main() {
         }
     };
 
+    {
+        let tokens = match tokenizer::tokenize_v2(&contents) {
+            Ok(tokens) => tokens,
+            Err(e) => {
+                eprintln!("Error during tokenization:");
+                eprintln!("{e}");
+                return;
+            }
+        };
+
+        println!("Tokens v2:");
+
+        for token in &tokens {
+            println!("{:?}", token);
+        }
+    }
+
     let tokens = match tokenizer::tokenize(contents) {
         Ok(tokens) => tokens,
         Err(e) => {
